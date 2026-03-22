@@ -1,9 +1,21 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
-import { Phone, X, Delete, PhoneCall, PhoneOff, PhoneForwarded, Grid3X3, User, ArrowLeft, CheckCircle2, Search } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import {useCallback, useEffect, useRef, useState} from "react"
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Delete,
+  Grid3X3,
+  Phone,
+  PhoneCall,
+  PhoneForwarded,
+  PhoneOff,
+  Search,
+  User,
+  X
+} from "lucide-react"
+import {Button} from "@/components/ui/button"
+import {cn} from "@/lib/utils"
 
 type CallState = "idle" | "ringing" | "ongoing" | "transferring"
 
@@ -208,10 +220,7 @@ export function DialerWidget() {
   }
 
   const formatPhoneNumber = (number: string) => {
-    const cleaned = number.replace(/\D/g, "")
-    if (cleaned.length <= 3) return cleaned
-    if (cleaned.length <= 6) return `${cleaned.slice(0, 3)} ${cleaned.slice(3)}`
-    return `${cleaned.slice(0, 3)} ${cleaned.slice(3, 6)}${cleaned.slice(6, 10)}`
+    return number.replace(/\D/g, "")
   }
 
   const handleSelectContact = (contact: Contact) => {
