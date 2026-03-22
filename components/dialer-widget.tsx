@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Phone, X, Delete, PhoneCall, PhoneOff, PhoneForwarded, Grid3X3, User } from "lucide-react"
+import { Phone, X, Delete, PhoneCall, PhoneOff, PhoneForwarded, Grid3X3, User, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -33,6 +33,23 @@ const mockCaller: CallerInfo = {
   phoneNumber: "(555) 123-4567",
 }
 
+interface Agent {
+  id: string
+  name: string
+  avatar?: string
+  status: "online" | "busy" | "away"
+  extension: string
+}
+
+// Mock online agents for transfer
+const mockAgents: Agent[] = [
+  { id: "1", name: "Sarah Johnson", status: "online", extension: "101" },
+  { id: "2", name: "Michael Chen", status: "online", extension: "102" },
+  { id: "3", name: "Emily Davis", status: "busy", extension: "103" },
+  { id: "4", name: "David Wilson", status: "online", extension: "104" },
+  { id: "5", name: "Jessica Brown", status: "away", extension: "105" },
+]
+
 export function DialerWidget() {
   const [isExpanded, setIsExpanded] = useState(false)
   const [phoneNumber, setPhoneNumber] = useState("")
@@ -41,6 +58,7 @@ export function DialerWidget() {
   const [callDuration, setCallDuration] = useState(0)
   const [showDtmfPad, setShowDtmfPad] = useState(false)
   const [dtmfInput, setDtmfInput] = useState("")
+  const [showTransferPanel, setShowTransferPanel] = useState(false)
 
   // Call duration timer
   useEffect(() => {
@@ -90,25 +108,45 @@ export function DialerWidget() {
   const handleAnswer = () => {
     setCallState("ongoing")
     setShowDtmfPad(false)
+    setShowTransferPanel(false)
     setDtmfInput("")
   }
 
   const handleDecline = () => {
     setCallState("idle")
     setShowDtmfPad(false)
+    setShowTransferPanel(false)
     setDtmfInput("")
   }
 
   const handleHangup = () => {
     setCallState("idle")
     setShowDtmfPad(false)
+    setShowTransferPanel(false)
     setDtmfInput("")
     setCallDuration(0)
   }
 
   const handleTransfer = () => {
-    // In a real app, this would open a transfer dialog
-    alert("Transfer call functionality")
+    setShowTransferPanel(true)
+    setShowDtmfPad(false)
+  }
+
+  const handleTransferToAgent = (agent: Agent) => {
+    // In a real app, this would initiate the transfer
+    alert(`Transferring call to ${agent.name} (ext. ${agent.extension})`)
+    setShowTransferPanel(false)
+  }
+
+  const getStatusColor = (status: Agent["status"]) => {
+    switch (status) {
+      case "online":
+        return "bg-emerald-500"
+      case "busy":
+        return "bg-red-500"
+      case "away":
+        return "bg-amber-500"
+    }
   }
 
   const formatPhoneNumber = (number: string) => {
@@ -200,37 +238,126 @@ export function DialerWidget() {
           <>
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-emerald-500/10">
-              <div className="flex items-center gap-2">
-                <Phone className="h-5 w-5 text-emerald-500" />
-                <span className="font-semibold text-card-foreground">On Call</span>
-              </div>
-              <button
-                onClick={() => setIsExpanded(false)}
-                className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-card-foreground"
-                aria-label="Minimize"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              {showTransferPanel ? (
+                <>
+                  <button
+                    onClick={() => setShowTransferPanel(false)}
+                    className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-card-foreground"
+                    aria-label="Back"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </button>
+                  <span className="font-semibold text-card-foreground">Transfer Call</span>
+                  <button
+                    onClick={() => setIsExpanded(false)}
+                    className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-card-foreground"
+                    aria-label="Minimize"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-5 w-5 text-emerald-500" />
+                    <span className="font-semibold text-card-foreground">On Call</span>
+                  </div>
+                  <button
+                    onClick={() => setIsExpanded(false)}
+                    className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-card-foreground"
+                    aria-label="Minimize"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </>
+              )}
             </div>
 
-            {/* Caller Info & Duration */}
-            <div className="flex flex-col items-center py-6 px-4 border-b border-border">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/20 mb-3">
-                <User className="h-8 w-8 text-emerald-500" />
-              </div>
-              <h3 className="text-lg font-semibold text-card-foreground">{caller.name}</h3>
-              <p className="text-sm text-muted-foreground">{caller.phoneNumber}</p>
-              <div className="mt-2 flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <span className="text-lg font-mono text-emerald-500">{formatDuration(callDuration)}</span>
-              </div>
-            </div>
+            {/* Transfer Panel */}
+            {showTransferPanel ? (
+              <div className="flex flex-col">
+                {/* Agent List */}
+                <div className="max-h-80 overflow-y-auto">
+                  <div className="px-4 py-2 bg-muted/50">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Available Agents</span>
+                  </div>
+                  <ul className="divide-y divide-border">
+                    {mockAgents.map((agent) => (
+                      <li key={agent.id}>
+                        <button
+                          onClick={() => handleTransferToAgent(agent)}
+                          disabled={agent.status !== "online"}
+                          className={cn(
+                            "w-full flex items-center gap-3 px-4 py-3 transition-colors text-left",
+                            agent.status === "online" 
+                              ? "hover:bg-muted cursor-pointer" 
+                              : "opacity-50 cursor-not-allowed"
+                          )}
+                        >
+                          <div className="relative">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
+                              <User className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                            <span
+                              className={cn(
+                                "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card",
+                                getStatusColor(agent.status)
+                              )}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-card-foreground truncate">{agent.name}</p>
+                            <p className="text-sm text-muted-foreground">Ext. {agent.extension}</p>
+                          </div>
+                          <div className="flex items-center">
+                            <span
+                              className={cn(
+                                "text-xs font-medium px-2 py-1 rounded-full",
+                                agent.status === "online" && "bg-emerald-100 text-emerald-700",
+                                agent.status === "busy" && "bg-red-100 text-red-700",
+                                agent.status === "away" && "bg-amber-100 text-amber-700"
+                              )}
+                            >
+                              {agent.status === "online" ? "Online" : agent.status === "busy" ? "Busy" : "Away"}
+                            </span>
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
 
-            {/* DTMF Pad Toggle */}
-            {showDtmfPad ? (
+                {/* Cancel Transfer Button */}
+                <div className="p-4 border-t border-border">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowTransferPanel(false)}
+                    className="w-full"
+                  >
+                    Cancel Transfer
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Caller Info & Duration */}
+                <div className="flex flex-col items-center py-6 px-4 border-b border-border">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/20 mb-3">
+                    <User className="h-8 w-8 text-emerald-500" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-card-foreground">{caller.name}</h3>
+                  <p className="text-sm text-muted-foreground">{caller.phoneNumber}</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span className="text-lg font-mono text-emerald-500">{formatDuration(callDuration)}</span>
+                  </div>
+                </div>
+
+                {/* DTMF Pad Toggle */}
+                {showDtmfPad ? (
               <>
                 {/* DTMF Input Display */}
                 <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -302,15 +429,17 @@ export function DialerWidget() {
             )}
 
             {/* Hangup Button */}
-            <div className="px-4 pb-4">
-              <Button
-                onClick={handleHangup}
-                className="w-full h-12 rounded-full bg-red-500 text-white hover:bg-red-600"
-              >
-                <PhoneOff className="mr-2 h-5 w-5" />
-                End Call
-              </Button>
-            </div>
+                <div className="px-4 pb-4">
+                  <Button
+                    onClick={handleHangup}
+                    className="w-full h-12 rounded-full bg-red-500 text-white hover:bg-red-600"
+                  >
+                    <PhoneOff className="mr-2 h-5 w-5" />
+                    End Call
+                  </Button>
+                </div>
+              </>
+            )}
           </>
         )}
 
