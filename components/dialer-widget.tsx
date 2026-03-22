@@ -53,21 +53,12 @@ const mockCaller: CallerInfo = {
 }
 
 interface Agent {
-  id: string
+  id: number
   name: string
-  avatar?: string
+  extension: number
   status: "online" | "busy" | "away"
-  extension: string
+  created_at?: string
 }
-
-// Mock online agents for transfer
-const mockAgents: Agent[] = [
-  { id: "1", name: "Sarah Johnson", status: "online", extension: "101" },
-  { id: "2", name: "Michael Chen", status: "online", extension: "102" },
-  { id: "3", name: "Emily Davis", status: "busy", extension: "103" },
-  { id: "4", name: "David Wilson", status: "online", extension: "104" },
-  { id: "5", name: "Jessica Brown", status: "away", extension: "105" },
-]
 
 export function DialerWidget() {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -82,6 +73,27 @@ export function DialerWidget() {
   const [searchQuery, setSearchQuery] = useState("")
   const [showSuggestions, setShowSuggestions] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [agentsLoading, setAgentsLoading] = useState(false)
+
+  // Fetch agents from the database
+  useEffect(() => {
+    const fetchAgents = async () => {
+      setAgentsLoading(true)
+      try {
+        const response = await fetch("/api/agents")
+        if (response.ok) {
+          const data = await response.json()
+          setAgents(data)
+        }
+      } catch (error) {
+        console.error("Failed to fetch agents:", error)
+      } finally {
+        setAgentsLoading(false)
+      }
+    }
+    fetchAgents()
+  }, [])
 
   // Filter contacts based on search query (name or phone number)
   const filteredContacts = mockContacts.filter((contact) => {
@@ -373,8 +385,17 @@ export function DialerWidget() {
                   <div className="px-4 py-2 bg-muted/50">
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Available Agents</span>
                   </div>
+                  {agentsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary"></div>
+                    </div>
+                  ) : agents.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No agents available
+                    </div>
+                  ) : (
                   <ul className="divide-y divide-border">
-                    {mockAgents.map((agent) => (
+                    {agents.map((agent) => (
                       <li key={agent.id}>
                         <button
                           onClick={() => handleTransferToAgent(agent)}
@@ -417,6 +438,7 @@ export function DialerWidget() {
                       </li>
                     ))}
                   </ul>
+                  )}
                 </div>
 
                 {/* Cancel Transfer Button */}
