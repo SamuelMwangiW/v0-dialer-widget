@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { Phone, X, Delete, PhoneCall, PhoneOff, PhoneForwarded, Grid3X3, User, ArrowLeft, CheckCircle2 } from "lucide-react"
+import { useState, useEffect, useCallback, useRef } from "react"
+import { Phone, X, Delete, PhoneCall, PhoneOff, PhoneForwarded, Grid3X3, User, ArrowLeft, CheckCircle2, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -11,6 +11,25 @@ interface CallerInfo {
   name: string
   phoneNumber: string
 }
+
+interface Contact {
+  id: string
+  name: string
+  phoneNumber: string
+  company?: string
+}
+
+// Mock contacts for autocomplete
+const mockContacts: Contact[] = [
+  { id: "1", name: "John Smith", phoneNumber: "5551234567", company: "Acme Corp" },
+  { id: "2", name: "Jane Doe", phoneNumber: "5559876543", company: "Tech Solutions" },
+  { id: "3", name: "Michael Johnson", phoneNumber: "5554567890", company: "Global Inc" },
+  { id: "4", name: "Sarah Williams", phoneNumber: "5551112222", company: "StartUp Labs" },
+  { id: "5", name: "David Brown", phoneNumber: "5553334444", company: "Design Studio" },
+  { id: "6", name: "Emily Davis", phoneNumber: "5555556666", company: "Marketing Pro" },
+  { id: "7", name: "Robert Wilson", phoneNumber: "5557778888", company: "Finance Group" },
+  { id: "8", name: "Lisa Anderson", phoneNumber: "5559990000", company: "Health Plus" },
+]
 
 const dialPadButtons = [
   { digit: "1", letters: "" },
@@ -60,6 +79,20 @@ export function DialerWidget() {
   const [dtmfInput, setDtmfInput] = useState("")
   const [showTransferPanel, setShowTransferPanel] = useState(false)
   const [transferringTo, setTransferringTo] = useState<Agent | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Filter contacts based on search query (name or phone number)
+  const filteredContacts = mockContacts.filter((contact) => {
+    const query = searchQuery.toLowerCase()
+    const cleanedQuery = query.replace(/\D/g, "")
+    return (
+      contact.name.toLowerCase().includes(query) ||
+      contact.phoneNumber.includes(cleanedQuery) ||
+      (contact.company && contact.company.toLowerCase().includes(query))
+    )
+  })
 
   // Call duration timer
   useEffect(() => {
@@ -163,6 +196,34 @@ export function DialerWidget() {
     if (cleaned.length <= 3) return cleaned
     if (cleaned.length <= 6) return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`
     return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`
+  }
+
+  const handleSelectContact = (contact: Contact) => {
+    setPhoneNumber(contact.phoneNumber)
+    setSearchQuery("")
+    setShowSuggestions(false)
+  }
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setSearchQuery(value)
+    // Also update phone number if typing digits
+    const digitsOnly = value.replace(/\D/g, "")
+    if (digitsOnly) {
+      setPhoneNumber(digitsOnly)
+    }
+    setShowSuggestions(value.length > 0)
+  }
+
+  const handleInputFocus = () => {
+    if (searchQuery.length > 0 || phoneNumber.length > 0) {
+      setShowSuggestions(true)
+    }
+  }
+
+  const handleInputBlur = () => {
+    // Delay hiding suggestions to allow click events to fire
+    setTimeout(() => setShowSuggestions(false), 150)
   }
 
   // Demo functions to simulate incoming calls
@@ -503,23 +564,57 @@ export function DialerWidget() {
               </div>
             </div>
 
-            {/* Phone Number Display */}
-            <div className="flex items-center justify-between border-b border-border px-4 py-4">
-              <div className="min-h-8 flex-1 text-center">
-                <span className="text-2xl font-medium tracking-wider text-card-foreground">
-                  {formatPhoneNumber(phoneNumber) || (
-                    <span className="text-muted-foreground">Enter number</span>
-                  )}
-                </span>
+            {/* Phone Number Input with Autocomplete */}
+            <div className="relative border-b border-border">
+              <div className="flex items-center px-4 py-3">
+                <Search className="h-4 w-4 text-muted-foreground mr-2 flex-shrink-0" />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={searchQuery || formatPhoneNumber(phoneNumber)}
+                  onChange={handleSearchChange}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
+                  placeholder="Enter name or number"
+                  className="flex-1 bg-transparent text-lg font-medium tracking-wide text-card-foreground placeholder:text-muted-foreground focus:outline-none"
+                />
+                {(phoneNumber || searchQuery) && (
+                  <button
+                    onClick={() => {
+                      setPhoneNumber("")
+                      setSearchQuery("")
+                      setShowSuggestions(false)
+                    }}
+                    className="ml-2 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-card-foreground"
+                    aria-label="Clear"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
-              {phoneNumber && (
-                <button
-                  onClick={handleDelete}
-                  className="ml-2 rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-card-foreground"
-                  aria-label="Delete digit"
-                >
-                  <Delete className="h-5 w-5" />
-                </button>
+
+              {/* Autocomplete Suggestions */}
+              {showSuggestions && filteredContacts.length > 0 && (
+                <div className="absolute left-0 right-0 top-full z-10 max-h-48 overflow-y-auto border-b border-border bg-card shadow-lg">
+                  {filteredContacts.map((contact) => (
+                    <button
+                      key={contact.id}
+                      onClick={() => handleSelectContact(contact)}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-muted"
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary flex-shrink-0">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-card-foreground text-sm truncate">{contact.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatPhoneNumber(contact.phoneNumber)}
+                          {contact.company && ` • ${contact.company}`}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
 
