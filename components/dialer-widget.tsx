@@ -13,23 +13,11 @@ interface CallerInfo {
 }
 
 interface Contact {
-  id: string
+  id: number
   name: string
-  phoneNumber: string
+  phone_number: string
   company?: string
 }
-
-// Mock contacts for autocomplete
-const mockContacts: Contact[] = [
-  { id: "1", name: "John Smith", phoneNumber: "5551234567", company: "Acme Corp" },
-  { id: "2", name: "Jane Doe", phoneNumber: "5559876543", company: "Tech Solutions" },
-  { id: "3", name: "Michael Johnson", phoneNumber: "5554567890", company: "Global Inc" },
-  { id: "4", name: "Sarah Williams", phoneNumber: "5551112222", company: "StartUp Labs" },
-  { id: "5", name: "David Brown", phoneNumber: "5553334444", company: "Design Studio" },
-  { id: "6", name: "Emily Davis", phoneNumber: "5555556666", company: "Marketing Pro" },
-  { id: "7", name: "Robert Wilson", phoneNumber: "5557778888", company: "Finance Group" },
-  { id: "8", name: "Lisa Anderson", phoneNumber: "5559990000", company: "Health Plus" },
-]
 
 const dialPadButtons = [
   { digit: "1", letters: "" },
@@ -53,21 +41,12 @@ const mockCaller: CallerInfo = {
 }
 
 interface Agent {
-  id: string
+  id: number
   name: string
-  avatar?: string
+  extension: number
   status: "online" | "busy" | "away"
-  extension: string
+  created_at?: string
 }
-
-// Mock online agents for transfer
-const mockAgents: Agent[] = [
-  { id: "1", name: "Sarah Johnson", status: "online", extension: "101" },
-  { id: "2", name: "Michael Chen", status: "online", extension: "102" },
-  { id: "3", name: "Emily Davis", status: "busy", extension: "103" },
-  { id: "4", name: "David Wilson", status: "online", extension: "104" },
-  { id: "5", name: "Jessica Brown", status: "away", extension: "105" },
-]
 
 export function DialerWidget() {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -83,17 +62,57 @@ export function DialerWidget() {
   const [searchQuery, setSearchQuery] = useState("")
   const [showSuggestions, setShowSuggestions] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [agentsLoading, setAgentsLoading] = useState(false)
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [contactsLoading, setContactsLoading] = useState(false)
 
-  // Filter contacts based on search query (name or phone number)
-  const filteredContacts = mockContacts.filter((contact) => {
-    const query = searchQuery.toLowerCase()
-    const cleanedQuery = query.replace(/\D/g, "")
-    return (
-      contact.name.toLowerCase().includes(query) ||
-      contact.phoneNumber.includes(cleanedQuery) ||
-      (contact.company && contact.company.toLowerCase().includes(query))
-    )
-  })
+  // Fetch agents from the database
+  useEffect(() => {
+    const fetchAgents = async () => {
+      setAgentsLoading(true)
+      try {
+        const response = await fetch("/api/agents")
+        if (response.ok) {
+          const data = await response.json()
+          setAgents(data)
+        }
+      } catch (error) {
+        console.error("Failed to fetch agents:", error)
+      } finally {
+        setAgentsLoading(false)
+      }
+    }
+    fetchAgents()
+  }, [])
+
+  // Fetch contacts from the database based on search query
+  useEffect(() => {
+    const fetchContacts = async () => {
+      if (!searchQuery || searchQuery.length < 1) {
+        setContacts([])
+        return
+      }
+      setContactsLoading(true)
+      try {
+        const response = await fetch(`/api/contacts?search=${encodeURIComponent(searchQuery)}`)
+        if (response.ok) {
+          const data = await response.json()
+          setContacts(data)
+        }
+      } catch (error) {
+        console.error("Failed to fetch contacts:", error)
+      } finally {
+        setContactsLoading(false)
+      }
+    }
+    
+    // Debounce the search
+    const timeoutId = setTimeout(fetchContacts, 300)
+    return () => clearTimeout(timeoutId)
+  }, [searchQuery])
+
+  
 
   // Call duration timer
   useEffect(() => {
@@ -200,7 +219,7 @@ export function DialerWidget() {
   }
 
   const handleSelectContact = (contact: Contact) => {
-    setPhoneNumber(contact.phoneNumber)
+    setPhoneNumber(contact.phone_number)
     setSearchQuery("")
     setShowSuggestions(false)
     setContactName(contact.name)
@@ -377,8 +396,17 @@ export function DialerWidget() {
                   <div className="px-4 py-2 bg-muted/50">
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Available Agents</span>
                   </div>
+                  {agentsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary"></div>
+                    </div>
+                  ) : agents.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No agents available
+                    </div>
+                  ) : (
                   <ul className="divide-y divide-border">
-                    {mockAgents.map((agent) => (
+                    {agents.map((agent) => (
                       <li key={agent.id}>
                         <button
                           onClick={() => handleTransferToAgent(agent)}
@@ -421,6 +449,7 @@ export function DialerWidget() {
                       </li>
                     ))}
                   </ul>
+                  )}
                 </div>
 
                 {/* Cancel Transfer Button */}
@@ -598,26 +627,36 @@ export function DialerWidget() {
               </div>
 
               {/* Autocomplete Suggestions */}
-              {showSuggestions && filteredContacts.length > 0 && (
+              {showSuggestions && (
                 <div className="absolute left-0 right-0 top-full z-10 max-h-48 overflow-y-auto border-b border-border bg-card shadow-lg">
-                  {filteredContacts.map((contact) => (
-                    <button
-                      key={contact.id}
-                      onClick={() => handleSelectContact(contact)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-muted"
-                    >
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary flex-shrink-0">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-card-foreground text-sm truncate">{contact.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatPhoneNumber(contact.phoneNumber)}
-                          {contact.company && ` • ${contact.company}`}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
+                  {contactsLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted border-t-primary"></div>
+                    </div>
+                  ) : contacts.length > 0 ? (
+                    contacts.map((contact) => (
+                      <button
+                        key={contact.id}
+                        onClick={() => handleSelectContact(contact)}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-muted"
+                      >
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary flex-shrink-0">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-card-foreground text-sm truncate">{contact.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatPhoneNumber(contact.phone_number)}
+                            {contact.company && ` • ${contact.company}`}
+                          </p>
+                        </div>
+                      </button>
+                    ))
+                  ) : searchQuery.length > 0 ? (
+                    <div className="text-center py-4 text-sm text-muted-foreground">
+                      No contacts found
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>
