@@ -1,11 +1,11 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Phone, X, Delete, PhoneCall, PhoneOff, PhoneForwarded, Grid3X3, User, ArrowLeft } from "lucide-react"
+import { Phone, X, Delete, PhoneCall, PhoneOff, PhoneForwarded, Grid3X3, User, ArrowLeft, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-type CallState = "idle" | "ringing" | "ongoing"
+type CallState = "idle" | "ringing" | "ongoing" | "transferring"
 
 interface CallerInfo {
   name: string
@@ -59,6 +59,7 @@ export function DialerWidget() {
   const [showDtmfPad, setShowDtmfPad] = useState(false)
   const [dtmfInput, setDtmfInput] = useState("")
   const [showTransferPanel, setShowTransferPanel] = useState(false)
+  const [transferringTo, setTransferringTo] = useState<Agent | null>(null)
 
   // Call duration timer
   useEffect(() => {
@@ -133,9 +134,17 @@ export function DialerWidget() {
   }
 
   const handleTransferToAgent = (agent: Agent) => {
-    // In a real app, this would initiate the transfer
-    alert(`Transferring call to ${agent.name} (ext. ${agent.extension})`)
+    setTransferringTo(agent)
+    setCallState("transferring")
     setShowTransferPanel(false)
+    
+    // Simulate transfer completion after 2 seconds
+    setTimeout(() => {
+      setCallState("idle")
+      setTransferringTo(null)
+      setCallDuration(0)
+      setDtmfInput("")
+    }, 2000)
   }
 
   const getStatusColor = (status: Agent["status"]) => {
@@ -231,6 +240,28 @@ export function DialerWidget() {
               </Button>
             </div>
           </>
+        )}
+
+        {/* Transferring State */}
+        {callState === "transferring" && transferringTo && (
+          <div className="flex flex-col items-center py-10 px-6">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/20 mb-6">
+              <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+            </div>
+            <h3 className="text-xl font-semibold text-card-foreground text-center">Call Transferred</h3>
+            <p className="text-muted-foreground mt-2 text-center">
+              Successfully transferred to
+            </p>
+            <p className="font-medium text-card-foreground mt-1">{transferringTo.name}</p>
+            <p className="text-sm text-muted-foreground">Ext. {transferringTo.extension}</p>
+            <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              Closing...
+            </div>
+          </div>
         )}
 
         {/* Ongoing Call State */}
