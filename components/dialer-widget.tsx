@@ -71,6 +71,7 @@ const mockAgents: Agent[] = [
 
 export function DialerWidget() {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [contactName, setContactName] = useState("")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [callState, setCallState] = useState<CallState>("idle")
   const [caller, setCaller] = useState<CallerInfo>(mockCaller)
@@ -134,7 +135,7 @@ export function DialerWidget() {
 
   const handleCall = () => {
     if (phoneNumber) {
-      setCaller({ name: "Outgoing Call", phoneNumber: formatPhoneNumber(phoneNumber) })
+      setCaller({ name: contactName ?? "Outgoing Call", phoneNumber: formatPhoneNumber(phoneNumber) })
       setCallState("ongoing")
     }
   }
@@ -202,6 +203,7 @@ export function DialerWidget() {
     setPhoneNumber(contact.phoneNumber)
     setSearchQuery("")
     setShowSuggestions(false)
+    setContactName(contact.name)
   }
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -209,10 +211,11 @@ export function DialerWidget() {
     setSearchQuery(value)
     // Also update phone number if typing digits
     const digitsOnly = value.replace(/\D/g, "")
-    if (digitsOnly) {
+    if (digitsOnly || value.length === 0) {
       setPhoneNumber(digitsOnly)
     }
     setShowSuggestions(value.length > 0)
+    setContactName('')
   }
 
   const handleInputFocus = () => {
@@ -241,7 +244,8 @@ export function DialerWidget() {
         className={cn(
           "flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg transition-all duration-300 hover:bg-emerald-600 hover:scale-110",
           isExpanded && "pointer-events-none scale-0 opacity-0",
-          callState === "ringing" && "animate-pulse bg-amber-500 hover:bg-amber-600"
+          callState === "ringing" && "animate-pulse bg-amber-500 hover:bg-amber-600",
+          callState === "ongoing" && "animate-pulse bg-emerald-500 hover:bg-emerald-600",
         )}
         aria-label="Open dialer"
       >
