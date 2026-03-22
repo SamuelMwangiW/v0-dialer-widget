@@ -6,8 +6,20 @@ export async function GET(request: NextRequest) {
   
   const searchParams = request.nextUrl.searchParams
   const query = searchParams.get("q") || ""
+  const random = searchParams.get("random")
   
   try {
+    // Return a random contact
+    if (random === "true") {
+      const randomContact = await sql`
+        SELECT id, name, phone_number, company, created_at 
+        FROM contacts 
+        ORDER BY RANDOM()
+        LIMIT 1
+      `
+      return NextResponse.json(randomContact[0] || null)
+    }
+    
     let contacts
     
     if (query) {

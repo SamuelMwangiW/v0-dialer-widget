@@ -34,11 +34,7 @@ const dialPadButtons = [
   { digit: "#", letters: "" },
 ]
 
-// Mock caller data for demonstration
-const mockCaller: CallerInfo = {
-  name: "John Smith",
-  phoneNumber: "(555) 123-4567",
-}
+
 
 interface Agent {
   id: number
@@ -53,7 +49,7 @@ export function DialerWidget() {
   const [contactName, setContactName] = useState("")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [callState, setCallState] = useState<CallState>("idle")
-  const [caller, setCaller] = useState<CallerInfo>(mockCaller)
+  const [caller, setCaller] = useState<CallerInfo>({ name: "", phoneNumber: "" })
   const [callDuration, setCallDuration] = useState(0)
   const [showDtmfPad, setShowDtmfPad] = useState(false)
   const [dtmfInput, setDtmfInput] = useState("")
@@ -249,10 +245,21 @@ export function DialerWidget() {
   }
 
   // Demo functions to simulate incoming calls
-  const simulateIncomingCall = () => {
-    setCaller(mockCaller)
-    setCallState("ringing")
-    setIsExpanded(true)
+  const simulateIncomingCall = async () => {
+    try {
+      const response = await fetch("/api/contacts?random=true")
+      if (response.ok) {
+        const contact = await response.json()
+        if (contact) {
+          const formattedPhone = formatPhoneNumber(contact.phone_number)
+          setCaller({ name: contact.name, phoneNumber: formattedPhone })
+          setCallState("ringing")
+          setIsExpanded(true)
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch random contact:", error)
+    }
   }
 
   return (
