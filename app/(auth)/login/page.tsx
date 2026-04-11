@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { Phone, Loader2, Eye, EyeOff } from "lucide-react"
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState("")
@@ -45,6 +45,68 @@ export default function LoginPage() {
   }
 
   return (
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="space-y-1.5">
+        <Label htmlFor="email" className="text-white/70 text-sm font-medium">
+          Email address
+        </Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder="admin@callcenter.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+          className="bg-white/10 border-white/15 text-white placeholder:text-white/30 focus:border-[oklch(0.55_0.22_264)] focus:ring-[oklch(0.55_0.22_264/0.3)] h-11"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="password" className="text-white/70 text-sm font-medium">
+          Password
+        </Label>
+        <div className="relative">
+          <Input
+            id="password"
+            type={showPassword ? "text" : "password"}
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+            className="bg-white/10 border-white/15 text-white placeholder:text-white/30 focus:border-[oklch(0.55_0.22_264)] focus:ring-[oklch(0.55_0.22_264/0.3)] h-11 pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors"
+          >
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+
+      <Button
+        type="submit"
+        disabled={loading}
+        className="w-full h-11 bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.50_0.22_264)] text-white font-semibold shadow-lg shadow-[oklch(0.55_0.22_264/0.3)] transition-all duration-200 mt-2"
+      >
+        {loading ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Signing in...
+          </>
+        ) : (
+          "Sign in"
+        )}
+      </Button>
+    </form>
+  )
+}
+
+export default function LoginPage() {
+  return (
     <div className="w-full max-w-md">
       {/* Glassmorphism card */}
       <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl p-8">
@@ -59,64 +121,10 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-1.5">
-            <Label htmlFor="email" className="text-white/70 text-sm font-medium">
-              Email address
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="admin@callcenter.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              className="bg-white/10 border-white/15 text-white placeholder:text-white/30 focus:border-[oklch(0.55_0.22_264)] focus:ring-[oklch(0.55_0.22_264/0.3)] h-11"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="password" className="text-white/70 text-sm font-medium">
-              Password
-            </Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                className="bg-white/10 border-white/15 text-white placeholder:text-white/30 focus:border-[oklch(0.55_0.22_264)] focus:ring-[oklch(0.55_0.22_264/0.3)] h-11 pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full h-11 bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.50_0.22_264)] text-white font-semibold shadow-lg shadow-[oklch(0.55_0.22_264/0.3)] transition-all duration-200 mt-2"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Signing in...
-              </>
-            ) : (
-              "Sign in"
-            )}
-          </Button>
-        </form>
+        {/* Form wrapped in Suspense for useSearchParams */}
+        <Suspense fallback={<div className="h-[220px] animate-pulse rounded-xl bg-white/5" />}>
+          <LoginForm />
+        </Suspense>
 
         {/* Demo credentials */}
         <div className="mt-6 p-3 rounded-xl bg-white/5 border border-white/10">
